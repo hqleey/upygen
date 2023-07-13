@@ -9,14 +9,16 @@ openai.api_key = os.environ["OPENAI_API_KEY"]
 
 query = sys.argv[1]
 
-model = openai.Model("text-davinci-003")
+def num_tokens_from_string(string: str, encoding_name="cl100k_base") -> int:
+    encoding = tiktoken.get_encoding(encoding_name)
+    num_tokens = len(encoding.encode(string))
+    return num_tokens
 
 def classify(query):
     examples = {
         "valid": ["write a UCLID5 module that represents an ATM", "give me a UCLID5 module that models a simple processor", "Generate a UCLID5 module that describes an infinite sequence"],
         "invalid": ["Who are you", "help me write Python code", "This is the worst day of my life."]
     }
-
 
     prompt = "Classify the query as either valid or invalid. " 
     prompt += "The query should only be valid if it asks for UCLID5 code.\n"
@@ -28,10 +30,9 @@ def classify(query):
     prompt += f"Query: \"{query}\"\n"
     prompt += f"Class: "
 
-    #print(query)
     response = openai.Completion.create(
         model="text-davinci-003",
-        prompt=prompt,# change back to prompt
+        prompt=prompt,
         temperature=0,
         max_tokens=1,
         top_p=1.0,
@@ -43,20 +44,11 @@ def classify(query):
     classification = response["choices"][0]["text"]
 
     if not ("valid" in classification and not "invalid" in classification):
-        print("Sad, your query failed. Try again.")
         return False
+    else:
+        return True
 
-    print("Yay, your query passed the first test, now lets update it!")
-    return True
-
-
-def num_tokens_from_string(string: str, encoding_name="cl100k_base") -> int:
-    """Returns the number of tokens in a text string."""
-    encoding = tiktoken.get_encoding(encoding_name)
-    num_tokens = len(encoding.encode(string))
-    return num_tokens
-
-def changePrompt(q):
+def rewrite_prompt(q):
     inputs =  [
         "program a UCLID5 module that randomly changes the value of a variable",
         "give me a UCLID5 module that models a simple processor", 
@@ -80,9 +72,7 @@ def changePrompt(q):
     response = openai.Completion.create(
         model="text-davinci-003",
         prompt=rewrite,
-        # temperature=0,
         max_tokens=num_tokens_from_string(rewrite) + num_tokens_from_string(q) + num_tokens_from_string("Python code that uses the uclid5_api package") ,
-        # top_p=1.0,
         frequency_penalty=-2.0,
         presence_penalty=-2.0,
         stop=["\"\"\""]
@@ -93,10 +83,13 @@ def changePrompt(q):
     return rewritten_prompt
 
 
-if classify(query):
-    query2 = changePrompt(query)
-    # TODO: actually run the query now. Need to:
-    # - Add info about uclid5_api to prompt
-    # - Maybe add COT structure or something
-    print(query2)
+if __name__ == "__main__":
+    if classify(query):
+        query2 = rewrite_prompt(query).strip()
+        # TODO: actually run the query now. Need to:
+        # - Add info about uclid5_api to prompt
+        # - Maybe add COT structure or something
+        print(query2)
+    else:
+        print("Sorry, I can only handle queries that ask for UCLID5 code.")
 

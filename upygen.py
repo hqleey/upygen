@@ -12,6 +12,25 @@ def num_tokens_from_string(string: str, encoding_name="cl100k_base") -> int:
     num_tokens = len(encoding.encode(string))
     return num_tokens
 
+
+def extract_python_code(text):
+    output = ""
+    grabbing = False
+    for l in text.splitlines():
+        if l == "```":
+            break
+        elif grabbing and l:
+            output += l + "\n"
+        elif l == "```python":
+            grabbing = True
+
+    # If we never saw ```python then assume all of it is code
+    if not grabbing:
+        return text
+
+    return output
+        
+
 def classify(query):
     examples = {
         "valid": ["write a UCLID5 module that represents an ATM", "give me a UCLID5 module that models a simple processor", "Generate a UCLID5 module that describes an infinite sequence"],
@@ -48,6 +67,7 @@ def classify(query):
     else:
         return True
 
+
 def rewrite_prompt(q):
     inputs =  [
         "program a UCLID5 module that randomly changes the value of a variable",
@@ -59,6 +79,7 @@ def rewrite_prompt(q):
         "Use the uclid5_api package to write Python code to model a simple processor", 
         "Represent a infinite sequence in Python using the uclid5_api package"
     ]
+        
 
     rewrite = "Please rewrite the following queries and make sure the output requests Python code that uses the uclid5_api package.\n" 
 
@@ -74,48 +95,103 @@ def rewrite_prompt(q):
         messages=[
             {"role": "user", "content": rewrite}
         ],
-        max_tokens=num_tokens_from_string(rewrite) + num_tokens_from_string(q) + num_tokens_from_string("Python code that uses the uclid5_api package") ,
-        frequency_penalty=-2.0,
-        presence_penalty=-2.0,
-
+        temperature = 0,
+        max_tokens=num_tokens_from_string(rewrite) + num_tokens_from_string(q) + num_tokens_from_string("Python code that uses the uclid5_api package"),
     )
 
     rewritten_prompt = response["choices"][0]["message"]["content"]
 
     return rewritten_prompt
 
-def run_query(query):
-    api_prompt = query
-    api_prompt += "\nThe first line must be \"from uclid5_api import *\"."
-    api_prompt += "\nThe second line must be \"m = Module(\"main\")\"."
-    api_prompt += "\nThe last line must be \"print(m)\"."
-    api_prompt += "\n\"Module\" is a class that models a transition system in UCLID5. You will use a single Module called \"m\"."
-    api_prompt += "\nThe \"Module\" method \"declare_var\" takes a name (string) and a UCLID5 type, and returns a new variable."
-    api_prompt += "\nFor example, \"x = m.declare_var(\"x\", integer())\" creates an integer variable called \"x\"."
-    api_prompt += "\nThe \"Module\" field \"init\" represents the initialization block of the transition system."
-    api_prompt += "\nThe \"Module\" field \"next\" represents the transition relation block of the transition system."
-    api_prompt += "\nBoth \"init\" and \"next\" are object of type \"Block\"."
-    api_prompt += "\n\"Block\" objects have two methods: \"assign\" and \"branch\"."
-    api_prompt += "\n\"assign\" takes two arguments: a variable, representing the left-hand-side of an assignment; and an expression, representing the right-hand-side of an assignment."
-    api_prompt += "\nFor example, you can assign \"x\" the value \"0\" in the init block with \"m.init.assign(x, 0)\"."
-    api_prompt += "\nFor example, you can assign \"x\" the value \"x + x\" in the next block with \"m.next.assign(x, x + x)\"."
-    api_prompt += "\n\"branch\" takes one argument, a boolean expression, and returns two objects of type \"Block\"."
-    api_prompt += "\nFor example, you can branch on the value of \"x\" being greater than zero with \"then_, else_ = m.next.branch(x > 0)\"."
-    api_prompt += "\nNow use this information about the uclid5_api to write the correct Python code."
+
+def sys_description(rewritten_query):
+    sd_prompt = "The first part of a UCLID5 module declares variables."
+    sd_prompt += "\nThe first line must be \"from uclid5_api import *\"."
+    sd_prompt += "\nThe second line must be \"m = Module(\"main\")\"."
+    sd_prompt += "\nThe last line must be \"print(m)\"."
+    sd_prompt += "\nDo not add constraints or specifications."
+    sd_prompt += "\n\"Module\" is a class that models a transition system in UCLID5. You will use a single Module called \"m\"."
+    sd_prompt += "\nThe \"Module\" method \"declare_var\" takes a name (string) and a UCLID5 type, and returns a new variable."
+    sd_prompt += "\nFor example, \"x = m.declare_var(\"x\", integer())\" creates an integer variable called \"x\"."
+    sd_prompt += "\nThis is the only method you will need to use."
+    sd_prompt += "\nThe set of available types are: boolean(), integer(), real(), bitvector(width), and array(index, element)."
+    sd_prompt += "\nYour output must be only executable Python code that declares variables."
+    sd_prompt += "\nUse this information of the uclid5_api to only create variables needed to solve: " + rewritten_query
+    # sd_prompt += "Let's think this step by step"
 
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "user", "content": api_prompt}
+            {"role": "user", "content": sd_prompt}
         ],
-        max_tokens=num_tokens_from_string(api_prompt) + num_tokens_from_string(query),
+        max_tokens=num_tokens_from_string(sd_prompt) + num_tokens_from_string(rewritten_query),
     )
 
-    python_code = response["choices"][0]["message"]["content"]
+    sd_python_code = response["choices"][0]["message"]["content"]
+    return sd_python_code
 
-    return python_code
+def init_prompt(rewritten_query, python_code):
+    init_prompt = "The init block of UCLID5 defines the initial values of the declared variables in the module."
+    init_prompt += "\nThe first line must be \"from uclid5_api import *\"."
+    init_prompt += "\nThe second line must be \"m = Module(\"main\")\"."
+    init_prompt += "\nThe last line must be \"print(m)\"."
+    init_prompt += "\nDo not add constraints or specifications."
+    init_prompt += "\nThe \"init\" field of the module \"m\" is a SequentialBlock. Do not assign to \"m.init\"."
+    init_prompt += "\nYou will never need to create a SequentialBlock."
+    init_prompt += "\nSequentialBlocks have two methods: \"assign\" and \"branch\"."
+    init_prompt += "\nThese are the only two methods you will need to use."
+    init_prompt += "\n\"assign\" takes two arguments: a variable, representing the left-hand-side of an assignment; and an expression, representing the right-hand-side of an assignment."
+    init_prompt += "\nFor example, you can assign \"x\" the value \"0\" in the init block with \"m.init.assign(x, 0)\"."
+    init_prompt += "\n\"branch\" takes one argument, a boolean expression, and returns two objects of type SequentialBlock, one for the then branch and one for the else branch."
+    init_prompt += "\nFor example, \"then_, else_ = m.init.branch(x == 0)\" will create and return two new SequentialBlocks, one for when \"x == 0\" is true and the other for when \"x == 0\" is not true."
+    init_prompt += "\nYou will never need to use with statements. Do not use with statements."
+    init_prompt += "\nYour output must be only executable Python code and must continue from and include your pervious work. You will not need to declare any new variables."
+    init_prompt += "\nHere was your previous work:\n" + python_code
+    init_prompt += "\nLets use this information about the uclid5_api and your previous work to write the init block for module \"m\": " + rewritten_query
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "user", "content": init_prompt}
+        ],
+        max_tokens=num_tokens_from_string(init_prompt) + num_tokens_from_string(rewritten_query),
+    )
+
+    init_python_code = response["choices"][0]["message"]["content"]
+  
+
+    return init_python_code
 
 
+def next_prompt(rewritten_query, python_code):
+    next_prompt = "The Next Block defines the transition relation of the module."
+    next_prompt += "\nThe first line must be \"from uclid5_api import *\"."
+    next_prompt += "\nThe second line must be \"m = Module(\"main\")\"."
+    next_prompt += "\nThe last line must be \"print(m)\"."
+    next_prompt += "\nDo not add constraints or specifications."
+    next_prompt += "\nThe \"next\" field of the module \"m\" is a ConcurrentBlock. Do not assign to \"m.next\"."
+    next_prompt += "\nYou will never need to create a ConcurrentBlock."
+    next_prompt += "\nConcurrentBlocks have two methods: \"assign\" and \"branch\"."
+    next_prompt += "\nThese are the only two methods you will need to use."
+    next_prompt += "\n\"assign\" takes two arguments: a variable, representing the left-hand-side of an assignment; and an expression, representing the right-hand-side of an assignment."
+    next_prompt += "\nFor example, you can assign \"x\" the value \"0\" in the next block with \"m.next.assign(x, 0)\"."
+    next_prompt += "\n\"branch\" takes one argument, a boolean expression, and returns two objects of type ConcurrentBlock, one for the then branch and one for the else branch."
+    next_prompt += "\nFor example, \"then_, else_ = m.next.branch(x == 0)\" will create and return two new ConcurrentBlocks, one for when \"x == 0\" is true and the other for when \"x == 0\" is not true."
+    next_prompt += "\nYou will never need to use with statements. Do not use with statements."
+    next_prompt += "\nYour output must be only executable Python code and must continue from and include your pervious work. You will not need to declare any new variables."
+    next_prompt += "\nHere was your previous work: \n" + python_code
+    next_prompt += "\nLets use this information about the uclid5_api and your previous work to write the next block for module \"m\": " + rewritten_query
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "user", "content": next_prompt}
+        ],
+        max_tokens=num_tokens_from_string(next_prompt) + num_tokens_from_string(rewritten_query),
+    )
+
+    next_python_code = response["choices"][0]["message"]["content"]
+
+    return  next_python_code
 
 
 if __name__ == "__main__":
@@ -123,19 +199,45 @@ if __name__ == "__main__":
 
     if not classify(original_query):
         print("Sorry, I can only handle queries that ask for UCLID5 code.")
+        exit()
 
     rewritten_query = rewrite_prompt(original_query).strip()
+    print(rewritten_query)
 
-    code = run_query(rewritten_query)
-
-    print("\\\\ Rewritten query: ")
-    print("\\\\ " + "\n\\\\ ".join(rewritten_query.splitlines()))
-    print("\\\\ Python code to run: ")
-    print("\\\\" + "\n\\\\ ".join(code.splitlines()))
-    print("\\\\ Resulting UCLID5 code: ")
-
+    print("-" * 80)
+    description = sys_description(rewritten_query)
+    print(description)
+    description = extract_python_code(description)
     try:
-        exec(code)
-    except:
-        print("Ooops, there was an error in the generated Python code :(")
+        print("-" * 80)
+        exec(description)
+    except Exception as exception:
+        print("There was an error in the generated system description")
+        print(exception)
+        exit()
 
+
+    print("-" * 80)
+    init = init_prompt(rewritten_query, description)
+    print(init)
+    init = extract_python_code(init)
+    try:
+        print("-" * 80)
+        exec(init)
+    except Exception as exception:
+        print("There was an error in the generated init block")
+        print(exception)
+        exit()
+
+    
+    print("-" * 80)
+    next = next_prompt(rewritten_query, init)
+    print(next)
+    next = extract_python_code(next)
+    try:
+        print("-" * 80)
+        exec(next)
+    except Exception as exception:
+        print("There was an error in the generated next block")
+        print(exception)
+        exit()

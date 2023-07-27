@@ -105,7 +105,8 @@ def rewrite_prompt(q):
 
 
 def sys_description(rewritten_query):
-    sd_prompt = "The first part of a UCLID5 module declares variables."
+    sd_prompt = "Here is a quick tutorial about the uclid5_api"
+    sd_prompt += "The first part of a UCLID5 module declares variables."
     sd_prompt += "\nThe first line must be \"from uclid5_api import *\"."
     sd_prompt += "\nThe second line must be \"m = Module(\"main\")\"."
     sd_prompt += "\nThe last line must be \"print(m)\"."
@@ -115,8 +116,8 @@ def sys_description(rewritten_query):
     sd_prompt += "\nFor example, \"x = m.declare_var(\"x\", integer())\" creates an integer variable called \"x\"."
     sd_prompt += "\nThis is the only method you will need to use."
     sd_prompt += "\nThe set of available types are: boolean(), integer(), real(), bitvector(width), and array(index, element)."
-    sd_prompt += "\nYour output must be only executable Python code that declares variables."
-    sd_prompt += "\nUse this information of the uclid5_api to only create variables needed to solve: " + rewritten_query
+    sd_prompt += "\nYour output must be only executable Python code that declares variables. No explanation needed."
+    sd_prompt += "\nUse this tutorial of the uclid5_api to only create variables needed to solve: " + rewritten_query
     # sd_prompt += "Let's think this step by step"
 
     response = openai.ChatCompletion.create(
@@ -131,7 +132,8 @@ def sys_description(rewritten_query):
     return sd_python_code
 
 def init_prompt(rewritten_query, python_code):
-    init_prompt = "The init block of UCLID5 defines the initial values of the declared variables in the module."
+    init_prompt = "Here is a quick tutorial about the uclid5_api"
+    init_prompt += "The init block of UCLID5 defines the initial values of the declared variables in the module."
     init_prompt += "\nThe first line must be \"from uclid5_api import *\"."
     init_prompt += "\nThe second line must be \"m = Module(\"main\")\"."
     init_prompt += "\nThe last line must be \"print(m)\"."
@@ -147,7 +149,7 @@ def init_prompt(rewritten_query, python_code):
     init_prompt += "\nYou will never need to use with statements. Do not use with statements."
     init_prompt += "\nYour output must be only executable Python code and must continue from and include your pervious work. You will not need to declare any new variables."
     init_prompt += "\nHere was your previous work:\n" + python_code
-    init_prompt += "\nLets use this information about the uclid5_api and your previous work to write the init block for module \"m\": " + rewritten_query
+    init_prompt += "\nLets use this tutorial about the uclid5_api and your previous work to write the init block for module \"m\": " + rewritten_query
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
@@ -163,11 +165,13 @@ def init_prompt(rewritten_query, python_code):
 
 
 def next_prompt(rewritten_query, python_code):
-    next_prompt = "The Next Block defines the transition relation of the module."
+    next_prompt = "Here is a quick tutorial about the uclid5_api next block"
+    next_prompt += "The Next Block defines the transition relation of the module."
     next_prompt += "\nThe first line must be \"from uclid5_api import *\"."
     next_prompt += "\nThe second line must be \"m = Module(\"main\")\"."
     next_prompt += "\nThe last line must be \"print(m)\"."
     next_prompt += "\nDo not add constraints or specifications."
+    next_prompt += "\nDo not declare new variables"
     next_prompt += "\nThe \"next\" field of the module \"m\" is a ConcurrentBlock. Do not assign to \"m.next\"."
     next_prompt += "\nYou will never need to create a ConcurrentBlock."
     next_prompt += "\nConcurrentBlocks have two methods: \"assign\" and \"branch\"."
@@ -178,8 +182,9 @@ def next_prompt(rewritten_query, python_code):
     next_prompt += "\nFor example, \"then_, else_ = m.next.branch(x == 0)\" will create and return two new ConcurrentBlocks, one for when \"x == 0\" is true and the other for when \"x == 0\" is not true."
     next_prompt += "\nYou will never need to use with statements. Do not use with statements."
     next_prompt += "\nYour output must be only executable Python code and must continue from and include your pervious work. You will not need to declare any new variables."
+    next_prompt += "\nYou cannot use for loops, or with statements in your response. It is not used in the uclid5_api"
     next_prompt += "\nHere was your previous work: \n" + python_code
-    next_prompt += "\nLets use this information about the uclid5_api and your previous work to write the next block for module \"m\": " + rewritten_query
+    next_prompt += "\nLets use this tutorial about the uclid5_api and your previous work to write the next block for module \"m\": " + rewritten_query
 
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",

@@ -74,14 +74,27 @@ def rewrite_prompt(q):
         "give me a UCLID5 module that models a simple processor", 
         "Generate a UCLID5 module that describes an infinite sequence"
     ]
+    # outputs =  [
+    #     "Write Python code using the uclid5_api package to generate a module that randomly changes the value of a variable. Think step-by-step. Step 1. Create System Description, Step 2: Create init block,  Step 3: Create next block", 
+    #     "Use the uclid5_api package to write Python code to model a simple processor. Lets think this step by step in creating the system description, init block or next block. ", 
+    #     "Represent a infinite sequence in Python using the uclid5_api package, Make sure to reason the 3 steps of creating the System Description, init block or next block"
+    # ]
+
     outputs =  [
-        "Write Python code using the uclid5_api package to generate a module that randomly changes the value of a variable", 
-        "Use the uclid5_api package to write Python code to model a simple processor", 
-        "Represent a infinite sequence in Python using the uclid5_api package"
+        "Write Python code using the uclid5_api package to generate a module that randomly changes the value of a variable. Think step-by-step and only execute your final thought", 
+        "Use the uclid5_api package to write Python code to model a simple processor. Reason your thoughts and only execute your final answer", 
+        "Represent a infinite sequence in Python using the uclid5_api package. Execute the Python code and think step-by-step"
     ]
+
+    # outputs =  [
+    #     "Write Python code using the uclid5_api package to generate a module that randomly changes the value of a variable. Create 3 approaches. Execute what you think is the best approach", 
+    #     "Use the uclid5_api package to write Python code to model a simple processor. Generate 3 approaches and Only execute python code for what you think is the most effective approach.", 
+    #     "Generate 3 approaches to Represent a infinite sequence in Python using the uclid5_api package. Choose what you think the best suited approach is and execute the python code."
+    # ]
         
 
-    rewrite = "Please rewrite the following queries and make sure the output requests Python code that uses the uclid5_api package.\n" 
+    rewrite = "Please rewrite the following queries and make sure the output requests Python code that uses the uclid5_api package, along with the words. Lets think this step=by-step\n" 
+  
 
     for input,output in zip(inputs,outputs):
         rewrite += f"Original: \"{input}\"\n"

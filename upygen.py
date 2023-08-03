@@ -4,6 +4,8 @@ import os
 import sys
 import openai
 import tiktoken
+from io import StringIO
+from contextlib import redirect_stdout
 
 openai.api_key = os.environ["OPENAI_API_KEY"]
 
@@ -17,24 +19,34 @@ def extract_python_code(text):
     output = ""
     grabbing = False
     for l in text.splitlines():
-        if l == "```":
+        if l.strip() == "```":
             break
         elif grabbing and l:
             output += l + "\n"
-        elif l == "```python":
+        elif l.strip() in ["```python", "```python3", "```py", "```py3", "```"]:
             grabbing = True
 
     # If we never saw ```python then assume all of it is code
     if not grabbing:
-        return text
+        output = text
+
+    if "print(m)" not in output:
+        output += "\nprint(m)"
 
     return output
-        
+
+
+def execute_python_code(text):
+    f = StringIO()
+    with redirect_stdout(f):
+        exec(text)
+    s = f.getvalue()
+    return s
 
 def classify(query):
     examples = {
-        "valid": ["write a UCLID5 module that represents an ATM", "give me a UCLID5 module that models a simple processor", "Generate a UCLID5 module that describes an infinite sequence"],
-        "invalid": ["Who are you", "help me write Python code", "This is the worst day of my life."]
+        "valid": ["write a UCLID5 module that represents an ATM", "give me a UCLID5 module that models a simple processor", "Generate a UCLID5 module that describes an infinite sequence", "Can you model an election in uclid5?"],
+        "invalid": ["Who are you", "help me write Python code", "This is the worst day of my life.", "Model a chicken sandwich"]
     }
 
     prompt = "Classify the query as either valid or invalid. " 
@@ -62,10 +74,12 @@ def classify(query):
 
     classification = response["choices"][0]["message"]["content"]
 
-    if not ("valid" in classification and not "invalid" in classification):
-        return False
-    else:
-        return True
+    # if not ("valid" in classification and not "invalid" in classification):
+    #     return False
+    # else:
+    #     return True
+
+    return classification
 
 
 def rewrite_prompt(q):
@@ -118,7 +132,7 @@ def rewrite_prompt(q):
 
 
 def sys_description(rewritten_query):
-    sd_prompt = "Here is a quick tutorial about the uclid5_api"
+    sd_prompt = "You are an expert an AI programming assistant who is an expert in formal modelling"
     sd_prompt += "The first part of a UCLID5 module declares variables."
     sd_prompt += "\nThe first line must be \"from uclid5_api import *\"."
     sd_prompt += "\nThe second line must be \"m = Module(\"main\")\"."
@@ -145,7 +159,7 @@ def sys_description(rewritten_query):
     return sd_python_code
 
 def init_prompt(rewritten_query, python_code):
-    init_prompt = "Here is a quick tutorial about the uclid5_api"
+    init_prompt = "You are an expert an AI programming assistant who is an expert in formal modelling"
     init_prompt += "The init block of UCLID5 defines the initial values of the declared variables in the module."
     init_prompt += "\nThe first line must be \"from uclid5_api import *\"."
     init_prompt += "\nThe second line must be \"m = Module(\"main\")\"."
@@ -178,7 +192,7 @@ def init_prompt(rewritten_query, python_code):
 
 
 def next_prompt(rewritten_query, python_code):
-    next_prompt = "Here is a quick tutorial about the uclid5_api next block"
+    next_prompt = "You are an expert an AI programming assistant who is an expert in formal modelling"
     next_prompt += "The Next Block defines the transition relation of the module."
     next_prompt += "\nThe first line must be \"from uclid5_api import *\"."
     next_prompt += "\nThe second line must be \"m = Module(\"main\")\"."
@@ -212,50 +226,67 @@ def next_prompt(rewritten_query, python_code):
     return  next_python_code
 
 
-if __name__ == "__main__":
-    original_query = sys.argv[1]
+def generate(original_query):
+    failed = False
+    out = ""
 
-    if not classify(original_query):
-        print("Sorry, I can only handle queries that ask for UCLID5 code.")
-        exit()
-
+    # print("-" * 80, "Rewritten Query")
     rewritten_query = rewrite_prompt(original_query).strip()
     print(rewritten_query)
 
-    print("-" * 80)
+    # print("-" * 80, "Variable Declarations in Python")
     description = sys_description(rewritten_query)
-    print(description)
+    # print(description)
     description = extract_python_code(description)
     try:
-        print("-" * 80)
-        exec(description)
+        # print("-" * 80, "Variable Declarations in UCLID5")
+        out = execute_python_code(description)
+        # print(out)
     except Exception as exception:
-        print("There was an error in the generated system description")
+        print("There was an error in the generated variable declarations")
         print(exception)
-        exit()
+        failed = True
+        return out + "//there was an error in the generated  variable declaration"
 
+    if not failed:
+        # print("-" * 80, "Init Block in Python")
+        init = init_prompt(rewritten_query, description)
+        # print(init)
+        init = extract_python_code(init)
+        try:
+            # print("-" * 80, "Init Block in UCLID5")
+            out = execute_python_code(init)
+            # print(out)
+        except Exception as exception:
+            print("There was an error in the generated init block")
+            print(exception)
+            failed = True
+            return out + "//there was an error in the generated init block"
 
-    print("-" * 80)
-    init = init_prompt(rewritten_query, description)
-    print(init)
-    init = extract_python_code(init)
-    try:
-        print("-" * 80)
-        exec(init)
-    except Exception as exception:
-        print("There was an error in the generated init block")
-        print(exception)
-        exit()
+    if not failed:
+        # print("-" * 80, "Next Block in Python")
+        next = next_prompt(rewritten_query, init)
+        # print(next)
+        next = extract_python_code(next)
+        try:
+            # print("-" * 80, "Next Block in UCLID5")
+            out = execute_python_code(next)
+            # print(out)
+        except Exception as exception:
+            print("There was an error in the generated next block")
+            print(exception)
+            failed = True
+            return out + "//there was an error in the generated next block"
 
-    
-    print("-" * 80)
-    next = next_prompt(rewritten_query, init)
-    print(next)
-    next = extract_python_code(next)
-    try:
-        print("-" * 80)
-        exec(next)
-    except Exception as exception:
-        print("There was an error in the generated next block")
-        print(exception)
-        exit()
+    return out
+
+if __name__ == "__main__":
+    original_query = sys.argv[1]
+
+    if classify(original_query):
+        out = generate(original_query)
+        # print("-" * 80, "Final UCLID5 Module")
+        print(out)
+    else:
+        print("Sorry, I can only handle queries that ask for UCLID5 code.")
+

@@ -1,0 +1,8 @@
+Guessed "valid" on 19 out of 20 valid tests
+Guessed "valid" on 12 out of 20 invalid but close tests
+Guessed "valid" on 5 out of 20 invalid but far tests
+Guessed "valid" on 0 out of 20 invalid tests
+False Positives: 17
+True Positives: 19
+False Negatives: 1
+True Negatives: 43

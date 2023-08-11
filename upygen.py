@@ -60,7 +60,7 @@ def classify(query):
     prompt += f"Class: "
 
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4",
         messages=[
             {"role": "user", "content": prompt}
         ],
@@ -118,7 +118,7 @@ def rewrite_prompt(q):
     rewrite += f"Rewritten: "
 
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4",
         messages=[
             {"role": "user", "content": rewrite}
         ],
@@ -132,7 +132,7 @@ def rewrite_prompt(q):
 
 
 def sys_description(rewritten_query):
-    sd_prompt = "You are an expert an AI programming assistant who is an expert in formal modelling"
+    sd_prompt = "You are an AI programming assistant who is an expert in formal modelling"
     sd_prompt += "The first part of a UCLID5 module declares variables."
     sd_prompt += "\nThe first line must be \"from uclid5_api import *\"."
     sd_prompt += "\nThe second line must be \"m = Module(\"main\")\"."
@@ -148,7 +148,7 @@ def sys_description(rewritten_query):
     # sd_prompt += "Let's think this step by step"
 
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4",
         messages=[
             {"role": "user", "content": sd_prompt}
         ],
@@ -159,7 +159,7 @@ def sys_description(rewritten_query):
     return sd_python_code
 
 def init_prompt(rewritten_query, python_code):
-    init_prompt = "You are an expert an AI programming assistant who is an expert in formal modelling"
+    init_prompt = "You are an AI programming assistant who is an expert in formal modelling"
     init_prompt += "The init block of UCLID5 defines the initial values of the declared variables in the module."
     init_prompt += "\nThe first line must be \"from uclid5_api import *\"."
     init_prompt += "\nThe second line must be \"m = Module(\"main\")\"."
@@ -178,7 +178,7 @@ def init_prompt(rewritten_query, python_code):
     init_prompt += "\nHere was your previous work:\n" + python_code
     init_prompt += "\nLets use this tutorial about the uclid5_api and your previous work to write the init block for module \"m\": " + rewritten_query
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4",
         messages=[
             {"role": "user", "content": init_prompt}
         ],
@@ -192,7 +192,7 @@ def init_prompt(rewritten_query, python_code):
 
 
 def next_prompt(rewritten_query, python_code):
-    next_prompt = "You are an expert an AI programming assistant who is an expert in formal modelling"
+    next_prompt = "You are an AI programming assistant who is an expert in formal modelling"
     next_prompt += "The Next Block defines the transition relation of the module."
     next_prompt += "\nThe first line must be \"from uclid5_api import *\"."
     next_prompt += "\nThe second line must be \"m = Module(\"main\")\"."
@@ -214,7 +214,7 @@ def next_prompt(rewritten_query, python_code):
     next_prompt += "\nLets use this tutorial about the uclid5_api and your previous work to write the next block for module \"m\": " + rewritten_query
 
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4",
         messages=[
             {"role": "user", "content": next_prompt}
         ],

@@ -54,6 +54,7 @@ def generate(query):
         fs_prompt += "\nprint_results;"
         fs_prompt += "\n}"
         fs_prompt += "\n Use this example to : " + query
+        fs_prompt += "only produce UCLID5 code"
     
         response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",

@@ -1,5 +1,5 @@
 import subprocess
-import upygen  
+import upygen
 
 def is_correct_syntax(code):
     with open("temp.ucl", 'w') as f:
@@ -52,6 +52,23 @@ valid_queries = [
 "Model a monitor in uclid5",
 "Create a representation of a stovetop in UCLID5"
 
+# "Represent a traffic light in UCLID5",
+# "Represent a traffic light in UCLID5",
+# "Represent a traffic light in UCLID5",
+# "Represent a traffic light in UCLID5",
+# "Represent a traffic light in UCLID5",
+# "Represent a traffic light in UCLID5",
+# "Represent a traffic light in UCLID5",
+# "Represent a traffic light in UCLID5",
+# "Represent a traffic light in UCLID5",
+# "Represent a traffic light in UCLID5",
+# "Represent a traffic light in UCLID5",
+# "Represent a traffic light in UCLID5",
+# "Represent a traffic light in UCLID5",
+# "Represent a traffic light in UCLID5",
+# "Represent a traffic light in UCLID5"
+
+
     ]
 
 
@@ -69,6 +86,7 @@ valid_queries = [
 good_syntax = 0
 bad_syntax = 0
 for str in valid_queries:
+    print(str)
     code = upygen.generate(str)
     print(is_correct_syntax(code))
     where_error_occurred(code)

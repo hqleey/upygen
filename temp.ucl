@@ -1,11 +1,11 @@
 module main {
-  var temperature: real;
-  var burner_status: boolean;
-  var timer: integer;
-  init {
-    temperature = 0.0;
-    burner_status = False;
-    timer = 0;
-  }
+  var burner1_on: boolean;
+  var burner2_on: boolean;
+  var burner3_on: boolean;
+  var burner4_on: boolean;
+  var burner1_temp: integer;
+  var burner2_temp: integer;
+  var burner3_temp: integer;
+  var burner4_temp: integer;
 }
-//there was an error in the generated next block
+//there was an error in the generated init block

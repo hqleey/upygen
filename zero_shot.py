@@ -32,11 +32,11 @@ def num_tokens_from_string(string: str, encoding_name="cl100k_base") -> int:
 
 
 def generate(query):
-        
+        query_chance = query + ". Only produce UCLID5 code"
         response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "user", "content": query}
+            {"role": "user", "content": query_chance}
         ],
        max_tokens=1000
 
@@ -44,6 +44,6 @@ def generate(query):
         code = response["choices"][0]["message"]["content"]
         return code
         
-uclidCode = generate("Represent a model of the fibonacci sequence using two integer values in UCLID5")
-uclidCodeExtract = extract_python_code(uclidCode)
-print(uclidCodeExtract)
+# uclidCode = generate("Represent a model of the fibonacci sequence using two integer values in UCLID5")
+# uclidCodeExtract = extract_python_code(uclidCode)
+# print(uclidCodeExtract)
